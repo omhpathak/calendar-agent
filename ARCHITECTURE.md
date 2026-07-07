@@ -64,4 +64,4 @@ type CalendarEvent = {
 
 ## Safety Boundary
 
-The app uses `calendar.readonly`. It never creates calendar events and never sends email. Scheduling output is intentionally copyable text.
+The app uses `calendar.events.readonly`. It never creates calendar events and never sends email. Scheduling output is intentionally copyable text.

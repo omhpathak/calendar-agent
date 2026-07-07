@@ -122,7 +122,7 @@ http://localhost:3000/api/auth/callback/google
 openid
 email
 profile
-https://www.googleapis.com/auth/calendar.readonly
+https://www.googleapis.com/auth/calendar.events.readonly
 ```
 
 For Vercel, add the deployed domain too:
