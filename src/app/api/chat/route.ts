@@ -9,6 +9,21 @@ type ChatRequest = {
   events?: CalendarEvent[];
 };
 
+function openAiStatus() {
+  const disabled = process.env.OPENAI_DISABLED === "true";
+  const hasKey = Boolean(process.env.OPENAI_API_KEY);
+
+  return {
+    disabled,
+    hasKey,
+    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+  };
+}
+
+export async function GET() {
+  return NextResponse.json(openAiStatus());
+}
+
 export async function POST(request: Request) {
   const body = (await request.json()) as ChatRequest;
   const message = body.message?.trim();
@@ -20,11 +35,12 @@ export async function POST(request: Request) {
 
   const analytics = analyzeCalendar(events);
 
-  const openAiDisabled = process.env.OPENAI_DISABLED === "true";
+  const status = openAiStatus();
 
-  if (openAiDisabled || !process.env.OPENAI_API_KEY) {
+  if (status.disabled || !status.hasKey) {
     return NextResponse.json({
       mode: "fallback",
+      openai: status.disabled ? "disabled" : "missing_key",
       content: deterministicAgentResponse(message, events, analytics),
     });
   }
@@ -32,7 +48,7 @@ export async function POST(request: Request) {
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model: status.model,
       temperature: 0.3,
       messages: [
         {
@@ -53,18 +69,23 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       mode: "openai",
+      openai: "ok",
       content:
         completion.choices[0]?.message?.content ??
         deterministicAgentResponse(message, events, analytics),
     });
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "OpenAI request failed.";
     return NextResponse.json({
       mode: "fallback",
+      openai: errorMessage.includes("429")
+        ? "quota_or_rate_limit"
+        : errorMessage.includes("401")
+          ? "invalid_key"
+          : "request_failed",
       content: deterministicAgentResponse(message, events, analytics),
-      warning:
-        error instanceof Error
-          ? `OpenAI request failed: ${error.message}`
-          : "OpenAI request failed.",
+      warning: `OpenAI request failed: ${errorMessage}`,
     });
   }
 }

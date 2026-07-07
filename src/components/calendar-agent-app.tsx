@@ -35,6 +35,8 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   mode?: "openai" | "fallback";
+  openai?: "ok" | "disabled" | "missing_key" | "quota_or_rate_limit" | "invalid_key" | "request_failed";
+  warning?: string;
 };
 
 const promptChips = [
@@ -171,6 +173,8 @@ export function CalendarAgentApp() {
       const result = (await response.json()) as {
         content?: string;
         mode?: "openai" | "fallback";
+        openai?: ChatMessage["openai"];
+        warning?: string;
         error?: string;
       };
       setMessages((current) => [
@@ -180,6 +184,8 @@ export function CalendarAgentApp() {
           role: "assistant",
           content: result.content ?? result.error ?? "I could not answer that.",
           mode: result.mode,
+          openai: result.openai,
+          warning: result.warning,
         },
       ]);
     } catch (error) {
@@ -510,7 +516,13 @@ export function CalendarAgentApp() {
                       {message.role === "assistant" ? (
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                            {message.mode === "openai" ? "OpenAI" : "Deterministic"}
+                            {message.openai === "ok"
+                              ? "OpenAI"
+                              : message.openai === "quota_or_rate_limit"
+                                ? "OpenAI quota fallback"
+                                : message.mode === "openai"
+                                  ? "OpenAI"
+                                  : "Deterministic"}
                           </span>
                           <button
                             className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
