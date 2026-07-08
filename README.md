@@ -1,26 +1,101 @@
 # Calendar Copilot
 
-Calendar Copilot is a React/Next.js take-home project for the Tenex Calendar Assistant prompt. It connects to Google Calendar, pulls upcoming events, computes schedule analytics deterministically, and gives the user a chat interface for calendar questions, availability planning, and copyable scheduling email drafts.
+Calendar Copilot is a React/Next.js calendar agent for the Tenex Calendar Assistant prompt. It authenticates with Google Calendar, pulls upcoming events, computes calendar intelligence, and gives users a chat agent for meeting-load analysis, availability planning, and copyable scheduling email drafts.
 
-The app is intentionally read-only. It can recommend times and draft emails, but it does not create calendar events or send messages.
+The app is intentionally read-only. It can recommend changes and draft messages, but it does not create calendar events or send emails.
+
+Live app:
+
+```text
+https://calendar-agent-beta.vercel.app
+```
+
+## Quick Start
+
+```bash
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+The app works immediately in **Sample mode**. To use live Google Calendar and OpenAI, configure `.env.local` as described below.
 
 ## Features
 
-- Google sign-in with Calendar read-only access
-- Live Google Calendar fetch for the next 30 days
-- Sample mode that works without auth or credentials
-- Meeting load, average meeting length, busiest day, and best free block metrics
-- Upcoming meeting list with attendees and duration
-- Schedule health insights for heavy days, scarce focus time, and back-to-back meetings
-- Availability ranking during working hours
-- Recurring meeting and collaborator summaries
-- Chat interface for:
-  - meeting-load questions
-  - meeting reduction recommendations
-  - availability search
-  - copyable scheduling email drafts
-- OpenAI-backed responses when `OPENAI_API_KEY` is set
-- Deterministic fallback responses when OpenAI is not configured
+- **Google Calendar authentication**
+  - Google OAuth through NextAuth
+  - Calendar events read-only scope
+  - Live calendar mode for the signed-in user
+
+- **Sample mode**
+  - Demo-safe seeded calendar data
+  - Works without Google OAuth
+  - Useful for reviewers who are not added as Google OAuth test users
+
+- **Calendar dashboard**
+  - Meeting load
+  - Meeting count
+  - Busiest day
+  - Best free block
+  - Upcoming meetings list
+  - Schedule health insights
+
+- **Calendar preview**
+  - Five-day visual calendar grid
+  - Shows events across working hours
+  - Visually separates meetings from busy blocks
+
+- **Meeting vs busy-block classification**
+  - Collaboration meetings count toward meeting load
+  - Solo or long busy blocks, such as shifts/focus blocks, block availability but are excluded from meeting-load math
+  - Prevents work blocks like `9-5 Gig` from appearing as hundreds of meeting hours
+
+- **Availability engine**
+  - Computes working-hour free blocks
+  - Ranks useful scheduling slots
+  - Supports requests like keeping mornings free
+
+- **Calendar agent chat**
+  - Answers meeting-load questions
+  - Recommends ways to decrease meeting load
+  - Finds available meeting slots
+  - Drafts copyable scheduling emails
+  - Uses OpenAI when configured
+  - Falls back to deterministic calendar logic if OpenAI is disabled or unavailable
+
+- **Leadership-oriented insights**
+  - Recurring meeting audit
+  - Top collaborators
+  - Back-to-back meeting risks
+  - Focus-time availability
+  - Busy-block visibility
+
+## Example Prompts
+
+```text
+How much of my time am I spending in meetings?
+```
+
+```text
+How would you recommend I decrease my meeting load?
+```
+
+```text
+Find three 30 minute times this week for a meeting.
+```
+
+```text
+I have three meetings I need to schedule with Joe, Dan, and Sally. I really want to block my mornings off to work out, so can you write me an email draft I can share with each of them?
+```
+
+```text
+Act like my chief of staff. What should I move, shorten, or decline this week?
+```
 
 ## Stack
 
@@ -33,36 +108,9 @@ The app is intentionally read-only. It can recommend times and draft emails, but
 - OpenAI API
 - date-fns
 - lucide-react
+- Vercel
 
-## Architecture
-
-```text
-React UI
-  |
-  |-- NextAuth Google OAuth
-  |
-  |-- /api/calendar
-  |     |-- Google Calendar API when signed in
-  |     |-- sample calendar fallback
-  |     |-- event normalization
-  |     |-- deterministic analytics
-  |
-  |-- /api/chat
-        |-- calendar summary
-        |-- deterministic availability + analytics
-        |-- OpenAI response when configured
-        |-- deterministic fallback when not configured
-```
-
-The main product decision is to keep calendar math out of the LLM. Meeting hours, free blocks, back-to-back detection, recurring meeting detection, and availability scoring are all ordinary TypeScript functions. The LLM is used for explanation, recommendation wording, and email drafting.
-
-## Local Setup
-
-Install dependencies:
-
-```bash
-npm install
-```
+## Environment Variables
 
 Create `.env.local`:
 
@@ -73,15 +121,29 @@ NEXTAUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=replace-with-google-client-id
 GOOGLE_CLIENT_SECRET=replace-with-google-client-secret
 
-OPENAI_API_KEY=
+OPENAI_API_KEY=replace-with-openai-key
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_DISABLED=false
 ```
 
-Generate a local auth secret:
+Generate `NEXTAUTH_SECRET`:
 
 ```bash
 openssl rand -base64 32
+```
+
+If you want to run without OpenAI:
+
+```env
+OPENAI_DISABLED=true
+```
+
+## Local Development
+
+Install dependencies:
+
+```bash
+npm install
 ```
 
 Run the app:
@@ -96,27 +158,35 @@ Open:
 http://localhost:3000
 ```
 
+Validate before deploying:
+
+```bash
+npm run lint
+npm run build
+```
+
 ## Google OAuth Setup
 
 In Google Cloud Console:
 
 1. Create or select a project.
-2. Enable the Google Calendar API.
+2. Enable the **Google Calendar API**.
 3. Configure the OAuth consent screen.
-4. Create an OAuth Client ID for a Web application.
-5. Add this local JavaScript origin:
+4. Add yourself as a test user if the app is in Testing mode.
+5. Create an OAuth Client ID for a **Web application**.
+6. Add this local JavaScript origin:
 
 ```text
 http://localhost:3000
 ```
 
-6. Add this local redirect URI:
+7. Add this local redirect URI:
 
 ```text
 http://localhost:3000/api/auth/callback/google
 ```
 
-7. Add these scopes:
+8. Add these OAuth scopes:
 
 ```text
 openid
@@ -125,67 +195,101 @@ profile
 https://www.googleapis.com/auth/calendar.events.readonly
 ```
 
-For Vercel, add the deployed domain too:
+The app only needs `calendar.events.readonly`; it does not request write access.
+
+## Production Deployment
+
+The app is deployed on Vercel.
+
+### Deploy From Terminal
+
+```bash
+npx vercel --prod
+```
+
+When prompted:
 
 ```text
-https://YOUR_APP.vercel.app
-https://YOUR_APP.vercel.app/api/auth/callback/google
+Project name: calendar-agent
+Framework: Next.js
+Customize settings: No
 ```
 
-Then set:
+### Vercel Environment Variables
+
+Set these in Vercel for Production:
 
 ```env
+NEXTAUTH_SECRET=production-random-secret
 NEXTAUTH_URL=https://YOUR_APP.vercel.app
-```
 
-## OpenAI Setup
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-The app works without OpenAI by using deterministic fallback responses. To enable LLM-generated recommendations and drafts, set:
-
-```env
-OPENAI_API_KEY=your-api-key
+OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_DISABLED=false
 ```
 
-The chat route still uses deterministic calendar analytics as context. The model is instructed not to claim that it created events, sent email, or accessed Gmail.
-
-For local demos without a valid funded API key, set:
+For this deployment:
 
 ```env
-OPENAI_DISABLED=true
+NEXTAUTH_URL=https://calendar-agent-beta.vercel.app
 ```
 
-## Validation
+After changing environment variables, redeploy:
 
 ```bash
-npm run lint
-npm run build
+npx vercel --prod
 ```
 
-Both commands should pass before submission.
+### Google OAuth Production URLs
 
-## Submission Notes
+In the Google OAuth client, add:
 
-- See `ARCHITECTURE.md` for the system design and data flow.
-- See `SUBMISSION.md` for the demo checklist, video talking points, and deployment checklist.
+Authorized JavaScript origin:
 
-## Deployment
+```text
+https://calendar-agent-beta.vercel.app
+```
 
-The easiest deployment target is Vercel:
+Authorized redirect URI:
 
-1. Push the repo to GitHub.
-2. Import it into Vercel.
-3. Add the environment variables from `.env.example`.
-4. Add the Vercel callback URL to the Google OAuth client.
-5. Redeploy.
+```text
+https://calendar-agent-beta.vercel.app/api/auth/callback/google
+```
 
-If the Google OAuth app remains in testing mode, add reviewer/test accounts in Google Cloud or use sample mode for review access.
+If you deploy under a different domain, add that domain with the same callback path.
+
+## Architecture
+
+```text
+React UI
+  |
+  |-- NextAuth Google OAuth
+  |
+  |-- /api/calendar
+  |     |-- Google Calendar API when signed in
+  |     |-- sample calendar fallback
+  |     |-- event normalization
+  |     |-- meeting vs busy-block classification
+  |     |-- deterministic analytics
+  |
+  |-- /api/chat
+        |-- compact calendar summary
+        |-- deterministic availability + analytics
+        |-- OpenAI response when configured
+        |-- deterministic fallback when unavailable
+```
+
+The key design choice is separating deterministic calendar computation from LLM behavior. Meeting load, free blocks, recurring meetings, busy-block classification, back-to-back detection, and availability ranking are computed in TypeScript. OpenAI is used for natural-language recommendations and email drafting.
+
+Additional architecture notes are in `ARCHITECTURE.md`.
 
 ## Tradeoffs
 
-- Read-only Calendar API access keeps the demo reliable and safer.
-- No database is used; the app computes analytics from the current calendar fetch.
-- Gmail is intentionally out of scope; email drafts are copyable text.
-- Sample mode exists so reviewers can see the full product without OAuth friction.
-- Production improvements would include durable user settings, background sync, calendar event creation with explicit confirmation, Gmail draft creation, richer evals for agent responses, and observability around LLM calls.
+- Calendar access is read-only for safety and faster OAuth approval.
+- The app drafts emails instead of sending them.
+- There is no database; analytics are computed from the current calendar fetch.
+- Sample mode exists so reviewers can evaluate the product without OAuth friction.
+- Production improvements would include durable user preferences, calendar event creation with explicit confirmation, Gmail draft integration, background sync, richer evals, and observability.
