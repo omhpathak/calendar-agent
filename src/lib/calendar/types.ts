@@ -34,12 +34,18 @@ export type ScheduleInsight = {
   severity: "good" | "watch" | "risk";
 };
 
+export type EventClassification = "meeting" | "busy_block";
+
 export type CalendarAnalytics = {
   rangeLabel: string;
   totalMeetingMinutes: number;
   totalMeetingHours: number;
   meetingCount: number;
   averageMeetingMinutes: number;
+  busyBlockCount: number;
+  busyBlockMinutes: number;
+  busyBlockHours: number;
+  busyBlocks: CalendarEvent[];
   busiestDay?: DayLoad;
   dayLoads: DayLoad[];
   recurringMeetings: CalendarEvent[];

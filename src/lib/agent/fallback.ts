@@ -7,10 +7,12 @@ function hours(minutes: number) {
 }
 
 function topSlots(analytics: CalendarAnalytics, count = 3) {
-  return analytics.freeBlocks
+  const slots = analytics.freeBlocks
     .slice(0, count)
     .map((block) => `- ${formatBlock(block)} (${block.durationMinutes} min)`)
     .join("\n");
+
+  return slots || "- No useful working-hour free blocks found.";
 }
 
 function schedulingSlots(analytics: CalendarAnalytics, avoidMornings: boolean) {
@@ -146,7 +148,14 @@ ${emailDraft(analytics, avoidMornings)}`;
   if (lower.includes("decrease") || lower.includes("reduce") || lower.includes("recommend")) {
     return `You have ${hours(analytics.totalMeetingMinutes)} of meetings across ${
       analytics.meetingCount
-    } upcoming events in this scan.
+    } collaboration meeting${analytics.meetingCount === 1 ? "" : "s"} in this scan.
+${
+  analytics.busyBlockCount
+    ? `I also found ${analytics.busyBlockCount} solo or long-duration busy block${
+        analytics.busyBlockCount === 1 ? "" : "s"
+      } (${hours(analytics.busyBlockMinutes)}) that block availability but are not counted as meetings.`
+    : ""
+}
 
 Recommended changes:
 ${recommendations(analytics)}
@@ -158,7 +167,14 @@ ${topSlots(analytics)}`;
   if (lower.includes("how much") || lower.includes("meeting")) {
     return `You are spending ${hours(analytics.totalMeetingMinutes)} in meetings across ${
       analytics.meetingCount
-    } upcoming events.
+    } collaboration meeting${analytics.meetingCount === 1 ? "" : "s"}.
+${
+  analytics.busyBlockCount
+    ? `I excluded ${analytics.busyBlockCount} solo/long busy block${
+        analytics.busyBlockCount === 1 ? "" : "s"
+      } from meeting load because they look like blocked time, not meetings.`
+    : ""
+}
 
 Average meeting length: ${analytics.averageMeetingMinutes} minutes.
 ${
@@ -169,7 +185,7 @@ ${
     : "There is no clear busiest day yet."
 }
 
-The most useful immediate move is to protect ${topSlots(analytics, 1).replace("- ", "")}.`;
+The most useful immediate move is to protect ${topSlots(analytics, 1).replace("- ", "")}`;
   }
 
   if (lower.includes("next") && nextEvent) {
@@ -182,7 +198,8 @@ The most useful immediate move is to protect ${topSlots(analytics, 1).replace("-
   return `Here is the current calendar read:
 
 - ${hours(analytics.totalMeetingMinutes)} in meetings
-- ${analytics.meetingCount} upcoming meetings
+- ${analytics.meetingCount} collaboration meetings
+- ${analytics.busyBlockCount} solo/long busy blocks excluded from meeting load
 - ${analytics.freeBlocks.length} useful free blocks
 - ${analytics.backToBackPairs.length} tight back-to-back handoffs
 

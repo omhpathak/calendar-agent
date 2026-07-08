@@ -11,12 +11,69 @@ import type {
   CalendarAnalytics,
   CalendarEvent,
   DayLoad,
+  EventClassification,
   ScheduleInsight,
 } from "./types";
 
 function eventDuration(event: CalendarEvent) {
   if (event.durationMinutes > 0) return event.durationMinutes;
   return Math.max(0, differenceInMinutes(new Date(event.end), new Date(event.start)));
+}
+
+const soloBlockPatterns = [
+  "focus",
+  "deep work",
+  "work block",
+  "blocked",
+  "busy",
+  "gym",
+  "workout",
+  "lunch",
+  "commute",
+  "travel",
+  "ooo",
+  "pto",
+  "vacation",
+  "holiday",
+  "gig",
+  "shift",
+];
+
+const meetingPatterns = [
+  "meeting",
+  "sync",
+  "1:1",
+  "1-1",
+  "one on one",
+  "standup",
+  "review",
+  "call",
+  "interview",
+  "demo",
+  "retro",
+  "planning",
+  "check-in",
+  "checkin",
+  "intro",
+  "prep",
+  "critique",
+];
+
+export function classifyEvent(event: CalendarEvent): EventClassification {
+  if (event.isAllDay) return "busy_block";
+
+  const title = event.title.toLowerCase();
+  const duration = eventDuration(event);
+  const hasAttendees = event.attendees.length > 0;
+  const looksSoloBlock = soloBlockPatterns.some((pattern) => title.includes(pattern));
+  const looksMeeting = meetingPatterns.some((pattern) => title.includes(pattern));
+
+  if (looksSoloBlock && !hasAttendees) return "busy_block";
+  if (duration > 240 && !hasAttendees) return "busy_block";
+  if (duration > 360) return "busy_block";
+  if (hasAttendees || looksMeeting) return "meeting";
+
+  return "busy_block";
 }
 
 function buildDayLoads(events: CalendarEvent[]): DayLoad[] {
@@ -83,6 +140,7 @@ function buildInsights(
   dayLoads: DayLoad[],
   backToBackPairs: CalendarAnalytics["backToBackPairs"],
   freeBlockCount: number,
+  busyBlockCount: number,
 ): ScheduleInsight[] {
   const insights: ScheduleInsight[] = [];
   const heavyDays = dayLoads.filter((day) => day.meetingMinutes >= 240);
@@ -106,6 +164,14 @@ function buildInsights(
       title: "Back-to-back meetings need buffers",
       description: `${backToBackPairs.length} tight handoff${backToBackPairs.length > 1 ? "s" : ""} leave ten minutes or less between meetings.`,
       severity: "watch",
+    });
+  }
+
+  if (busyBlockCount > 0) {
+    insights.push({
+      title: "Busy blocks are separated from meetings",
+      description: `${busyBlockCount} solo or long-duration calendar block${busyBlockCount > 1 ? "s are" : " is"} excluded from meeting-load math but still block availability.`,
+      severity: "good",
     });
   }
 
@@ -134,14 +200,20 @@ export function analyzeCalendar(
     .filter((event) => isAfter(new Date(event.end), startOfDay(now)))
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   const timedEvents = upcoming.filter((event) => !event.isAllDay);
-  const dayLoads = buildDayLoads(timedEvents);
-  const totalMeetingMinutes = timedEvents.reduce(
+  const meetingEvents = timedEvents.filter((event) => classifyEvent(event) === "meeting");
+  const busyBlocks = timedEvents.filter((event) => classifyEvent(event) === "busy_block");
+  const dayLoads = buildDayLoads(meetingEvents);
+  const totalMeetingMinutes = meetingEvents.reduce(
     (sum, event) => sum + eventDuration(event),
     0,
   );
-  const meetingCount = timedEvents.length;
+  const busyBlockMinutes = busyBlocks.reduce(
+    (sum, event) => sum + eventDuration(event),
+    0,
+  );
+  const meetingCount = meetingEvents.length;
   const freeBlocks = getFreeBlocks(timedEvents, now, 10);
-  const backToBackPairs = getBackToBackPairs(timedEvents);
+  const backToBackPairs = getBackToBackPairs(meetingEvents);
   const busiestDay = dayLoads.reduce<DayLoad | undefined>((busiest, day) => {
     if (!busiest || day.meetingMinutes > busiest.meetingMinutes) return day;
     return busiest;
@@ -160,14 +232,23 @@ export function analyzeCalendar(
     averageMeetingMinutes: meetingCount
       ? Math.round(totalMeetingMinutes / meetingCount)
       : 0,
+    busyBlockCount: busyBlocks.length,
+    busyBlockMinutes,
+    busyBlockHours: Math.round((busyBlockMinutes / 60) * 10) / 10,
+    busyBlocks: busyBlocks.slice(0, 10),
     busiestDay,
     dayLoads,
-    recurringMeetings: timedEvents.filter((event) => event.isRecurring).slice(0, 8),
+    recurringMeetings: meetingEvents.filter((event) => event.isRecurring).slice(0, 8),
     backToBackPairs,
-    topCollaborators: getTopCollaborators(timedEvents),
+    topCollaborators: getTopCollaborators(meetingEvents),
     largestFreeBlock: freeBlocks[0],
     freeBlocks,
-    insights: buildInsights(dayLoads, backToBackPairs, freeBlocks.length),
+    insights: buildInsights(
+      dayLoads,
+      backToBackPairs,
+      freeBlocks.length,
+      busyBlocks.length,
+    ),
   };
 }
 
@@ -190,6 +271,7 @@ export function summarizeForAgent(events: CalendarEvent[], analytics: CalendarAn
       durationMinutes: event.durationMinutes,
       attendees: event.attendees,
       isRecurring: event.isRecurring,
+      classification: classifyEvent(event),
     })),
   };
 }

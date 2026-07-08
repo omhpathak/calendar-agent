@@ -280,13 +280,13 @@ export function CalendarAgentApp() {
                   icon={<Clock3 size={18} />}
                   label="Meeting load"
                   value={`${analytics.totalMeetingHours}h`}
-                  detail={`${analytics.meetingCount} meetings from ${analytics.rangeLabel}`}
+                  detail={`${analytics.meetingCount} collaboration meetings from ${analytics.rangeLabel}`}
                 />
                 <MetricCard
                   icon={<Activity size={18} />}
-                  label="Average length"
-                  value={`${analytics.averageMeetingMinutes}m`}
-                  detail="Calculated from timed events only"
+                  label="Busy blocks"
+                  value={`${analytics.busyBlockHours}h`}
+                  detail={`${analytics.busyBlockCount} solo/long blocks excluded from meeting load`}
                 />
                 <MetricCard
                   icon={<CalendarDays size={18} />}
@@ -454,6 +454,31 @@ export function CalendarAgentApp() {
                       ) : (
                         <p className="text-sm text-slate-500">
                           No recurring meetings detected in the current window.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                    <h2 className="text-base font-semibold">Solo busy blocks</h2>
+                    <div className="mt-3 space-y-2">
+                      {analytics.busyBlocks.length ? (
+                        analytics.busyBlocks.slice(0, 4).map((event) => (
+                          <div
+                            key={event.id}
+                            className="rounded-md bg-slate-50 px-3 py-2"
+                          >
+                            <p className="truncate text-sm font-medium">
+                              {event.title}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {eventTime(event)} · blocks availability
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-slate-500">
+                          No solo or long busy blocks detected.
                         </p>
                       )}
                     </div>
