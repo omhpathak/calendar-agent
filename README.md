@@ -65,8 +65,8 @@ The app works immediately in **Sample mode**. To use live Google Calendar and Op
   - Recommends ways to decrease meeting load
   - Finds available meeting slots
   - Drafts copyable scheduling emails
-  - Uses OpenAI when configured
-  - Falls back to deterministic calendar logic if OpenAI is disabled or unavailable
+  - Uses an LLM response when configured
+  - Falls back to a rule-based response if the LLM is disabled or unavailable
 
 - **Leadership-oriented insights**
   - Recurring meeting audit
@@ -278,11 +278,11 @@ React UI
   |-- /api/chat
         |-- compact calendar summary
         |-- deterministic availability + analytics
-        |-- OpenAI response when configured
-        |-- deterministic fallback when unavailable
+        |-- LLM response when configured
+        |-- rule-based fallback when unavailable
 ```
 
-The key design choice is separating deterministic calendar computation from LLM behavior. Meeting load, free blocks, recurring meetings, busy-block classification, back-to-back detection, and availability ranking are computed in TypeScript. OpenAI is used for natural-language recommendations and email drafting.
+The key design choice is separating deterministic calendar computation from LLM behavior. Meeting load, free blocks, recurring meetings, busy-block classification, back-to-back detection, and availability ranking are computed in TypeScript. The LLM is used for natural-language recommendations and email drafting.
 
 Additional architecture notes are in `ARCHITECTURE.md`.
 

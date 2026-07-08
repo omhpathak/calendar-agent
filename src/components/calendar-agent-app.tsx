@@ -668,12 +668,12 @@ export function CalendarAgentApp() {
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
                             {message.openai === "ok"
-                              ? "OpenAI"
+                              ? "LLM response"
                               : message.openai === "quota_or_rate_limit"
-                                ? "OpenAI quota fallback"
+                                ? "Rule-based fallback"
                                 : message.mode === "openai"
-                                  ? "OpenAI"
-                                  : "Deterministic"}
+                                  ? "LLM response"
+                                  : "Rule-based fallback"}
                           </span>
                           <button
                             className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"
