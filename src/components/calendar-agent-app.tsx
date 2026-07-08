@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
+import { classifyEvent } from "@/lib/calendar/analytics";
 import type {
   CalendarAnalytics,
   CalendarEvent,
@@ -62,6 +63,129 @@ function eventTime(event: CalendarEvent) {
 
 function blockTime(start: string, end: string) {
   return `${format(new Date(start), "EEE h:mm a")} - ${format(new Date(end), "h:mm a")}`;
+}
+
+const previewHours = [9, 10, 11, 12, 13, 14, 15, 16];
+
+function hourLabel(hour: number) {
+  if (hour === 12) return "12p";
+  if (hour > 12) return `${hour - 12}p`;
+  return `${hour}a`;
+}
+
+function CalendarPreview({ events }: { events: CalendarEvent[] }) {
+  const days = Array.from({ length: 5 }, (_, offset) => {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() + offset);
+    return day;
+  });
+
+  const dayColumns = days.map((day) => {
+    const dayStart = day.getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    return {
+      day,
+      events: events
+        .filter((event) => {
+          const start = new Date(event.start).getTime();
+          const end = new Date(event.end).getTime();
+          return start < dayEnd && end > dayStart && !event.isAllDay;
+        })
+        .map((event) => {
+          const start = new Date(event.start);
+          const end = new Date(event.end);
+          const startHour = start.getHours() + start.getMinutes() / 60;
+          const endHour = end.getHours() + end.getMinutes() / 60;
+          const top = Math.max(0, Math.min(1, (startHour - 9) / 8)) * 100;
+          const bottom = Math.max(0, Math.min(1, (endHour - 9) / 8)) * 100;
+          const height = Math.max(8, bottom - top);
+
+          return {
+            event,
+            top,
+            height,
+            classification: classifyEvent(event),
+          };
+        }),
+    };
+  });
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold">Calendar preview</h2>
+          <p className="text-sm text-slate-500">
+            Meetings and busy blocks across the next five days
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+            Meeting
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-amber-400" />
+            Busy block
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-2">
+        <div className="pt-9">
+          {previewHours.map((hour) => (
+            <div key={hour} className="h-12 text-right text-[11px] text-slate-400">
+              {hourLabel(hour)}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid min-w-0 grid-cols-5 gap-2 overflow-hidden">
+          {dayColumns.map(({ day, events: dayEvents }) => (
+            <div key={day.toISOString()} className="min-w-0">
+              <div className="mb-2 text-center">
+                <p className="text-xs font-semibold text-slate-700">
+                  {format(day, "EEE")}
+                </p>
+                <p className="text-[11px] text-slate-400">{format(day, "MMM d")}</p>
+              </div>
+              <div className="relative h-96 rounded-md border border-slate-100 bg-slate-50">
+                {previewHours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="h-12 border-b border-slate-100 last:border-b-0"
+                  />
+                ))}
+                {dayEvents.map(({ event, top, height, classification }) => (
+                  <div
+                    key={event.id}
+                    className={
+                      classification === "meeting"
+                        ? "absolute left-1 right-1 overflow-hidden rounded border border-emerald-600 bg-emerald-100 px-1.5 py-1 text-emerald-950"
+                        : "absolute left-1 right-1 overflow-hidden rounded border border-amber-500 bg-amber-100 px-1.5 py-1 text-amber-950"
+                    }
+                    style={{ top: `${top}%`, height: `${height}%` }}
+                    title={`${event.title} · ${eventTime(event)}`}
+                  >
+                    <p className="truncate text-[11px] font-semibold leading-4">
+                      {event.title}
+                    </p>
+                    {height > 12 ? (
+                      <p className="truncate text-[10px] leading-3 opacity-80">
+                        {format(new Date(event.start), "h:mm")}-
+                        {format(new Date(event.end), "h:mm")}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function MetricCard({
@@ -316,6 +440,8 @@ export function CalendarAgentApp() {
                   }
                 />
               </div>
+
+              <CalendarPreview events={events} />
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
                 <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
