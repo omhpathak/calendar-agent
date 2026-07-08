@@ -340,7 +340,7 @@ export function CalendarAgentApp() {
                 <CalendarDays size={20} />
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
-                Calendar Copilot
+                Calendar Agent
               </h1>
               <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
                 {payload?.source === "live" ? "Live Google Calendar" : "Sample mode"}

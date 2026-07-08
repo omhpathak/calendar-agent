@@ -1,6 +1,6 @@
-# Calendar Copilot
+# Calendar Agent
 
-Calendar Copilot is a React/Next.js calendar agent for the Tenex Calendar Assistant prompt. It authenticates with Google Calendar, pulls upcoming events, computes calendar intelligence, and gives users a chat agent for meeting-load analysis, availability planning, and copyable scheduling email drafts.
+Calendar Agent is a React/Next.js calendar agent for the Tenex Calendar Assistant prompt. It authenticates with Google Calendar, pulls upcoming events, computes calendar intelligence, and gives users a chat agent for meeting-load analysis, availability planning, and copyable scheduling email drafts.
 
 The app is intentionally read-only. It can recommend changes and draft messages, but it does not create calendar events or send emails.
 

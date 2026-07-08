@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Calendar Copilot",
+  title: "Calendar Agent",
   description:
     "A read-only Google Calendar assistant for meeting analytics, availability planning, and scheduling drafts.",
 };

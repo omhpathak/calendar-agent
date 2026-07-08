@@ -1,4 +1,4 @@
-# Calendar Copilot Architecture
+# Calendar Agent Architecture
 
 ```text
 User
